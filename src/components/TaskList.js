@@ -3,7 +3,7 @@ import API from '../../../untitled2/src/api/axios';
 import { AuthContext } from '../AuthContext';
 
 const TaskList = () => {
-    const { token } = useContext(AuthContext);
+    const { token } = useContext(AuthContext); // Imame tokeną iš AuthContext
     const [tasks, setTasks] = useState([]);
 
     useEffect(() => {
@@ -14,20 +14,20 @@ const TaskList = () => {
                         Authorization: `Bearer ${token}`,
                     },
                 });
-                setTasks(res.data);
+                setTasks(res.data); // Uždaviniai bus įrašyti į state
             } catch (err) {
                 console.error('Klaida gaunant užduotis:', err);
             }
         };
 
         fetchTasks();
-    }, [token]);
+    }, [token]); // Tiksliname efektą priklausomybėje nuo tokeno
 
     const handleDelete = async (id) => {
         try {
             await API.delete(`/tasks/${id}`, {
                 headers: {
-                    Authorization: `Bearer ${token}`, // Naudojame tokeną
+                    Authorization: `Bearer ${token}`,
                 },
             });
             setTasks(tasks.filter((task) => task.id !== id)); // Pašaliname užduotį iš sąrašo
@@ -64,13 +64,19 @@ const TaskList = () => {
                 {tasks.map((task) => (
                     <li key={task.id}>
                         <div>
-              <span
-                  style={{
-                      textDecoration: task.completed ? 'line-through' : 'none',
-                  }}
-              >
-                {task.title}
-              </span>
+                            <span
+                                style={{
+                                    textDecoration: task.completed ? 'line-through' : 'none',
+                                }}
+                            >
+                                {task.title}
+                            </span>
+                        </div>
+                        <div>
+                            <strong>Vartotojas:</strong> {task.User?.username || 'Nežinomas'}
+                        </div>
+                        <div>
+                            <strong>Sukūrimo data:</strong> {new Date(task.createdAt).toLocaleString()}
                         </div>
                         <button onClick={() => handleComplete(task.id)}>
                             {task.completed ? 'Baigta' : 'Pažymėti kaip baigtą'}

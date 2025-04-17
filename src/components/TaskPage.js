@@ -35,8 +35,8 @@ const TaskPage = () => {
                     },
                 }
             );
-            setMessage('✅ Užduotis sukurta!');
             console.log('Task created:', res.data);  // Patikrinkite atsakymą
+            setMessage('✅ Užduotis sukurta!');
         } catch (err) {
             console.error('Error creating task:', err);
             setMessage('❌ Užduoties kūrimas nepavyko');
