@@ -6,6 +6,7 @@ const TaskList = () => {
     const { token } = useContext(AuthContext); // Imame tokeną iš AuthContext
     const [tasks, setTasks] = useState([]);
 
+    // Užduočių gavimas iš API
     useEffect(() => {
         const fetchTasks = async () => {
             try {
@@ -14,15 +15,19 @@ const TaskList = () => {
                         Authorization: `Bearer ${token}`,
                     },
                 });
+                console.log('Užduotys gautos iš serverio:', res.data); // Patikrinkite serverio atsakymą
                 setTasks(res.data); // Uždaviniai bus įrašyti į state
             } catch (err) {
                 console.error('Klaida gaunant užduotis:', err);
             }
         };
 
-        fetchTasks();
+        if (token) {
+            fetchTasks(); // Jei tokenas yra, užklausimas vykdomas
+        }
     }, [token]); // Tiksliname efektą priklausomybėje nuo tokeno
 
+    // Užduoties ištrynimas
     const handleDelete = async (id) => {
         try {
             await API.delete(`/tasks/${id}`, {
@@ -36,6 +41,7 @@ const TaskList = () => {
         }
     };
 
+    // Užduoties pažymėjimas kaip baigtos
     const handleComplete = async (id) => {
         try {
             await API.put(
@@ -61,29 +67,33 @@ const TaskList = () => {
         <div className="task-list">
             <h2>Užduotys</h2>
             <ul>
-                {tasks.map((task) => (
-                    <li key={task.id}>
-                        <div>
-                            <span
-                                style={{
-                                    textDecoration: task.completed ? 'line-through' : 'none',
-                                }}
-                            >
-                                {task.title}
-                            </span>
-                        </div>
-                        <div>
-                            <strong>Vartotojas:</strong> {task.User?.username || 'Nežinomas'}
-                        </div>
-                        <div>
-                            <strong>Sukūrimo data:</strong> {new Date(task.createdAt).toLocaleString()}
-                        </div>
-                        <button onClick={() => handleComplete(task.id)}>
-                            {task.completed ? 'Baigta' : 'Pažymėti kaip baigtą'}
-                        </button>
-                        <button onClick={() => handleDelete(task.id)}>Ištrinti</button>
-                    </li>
-                ))}
+                {tasks.length === 0 ? (
+                    <p>Užduočių nėra</p> // Jei nėra užduočių, rodomas pranešimas
+                ) : (
+                    tasks.map((task) => (
+                        <li key={task.id}>
+                            <div>
+                                <span
+                                    style={{
+                                        textDecoration: task.completed ? 'line-through' : 'none',
+                                    }}
+                                >
+                                    {task.title}
+                                </span>
+                            </div>
+                            <div>
+                                <strong>Vartotojas:</strong> {task.User?.username || 'Nežinomas'}
+                            </div>
+                            <div>
+                                <strong>Sukūrimo data:</strong> {new Date(task.createdAt).toLocaleString()}
+                            </div>
+                            <button onClick={() => handleComplete(task.id)}>
+                                {task.completed ? 'Baigta' : 'Pažymėti kaip baigtą'}
+                            </button>
+                            <button onClick={() => handleDelete(task.id)}>Ištrinti</button>
+                        </li>
+                    ))
+                )}
             </ul>
         </div>
     );

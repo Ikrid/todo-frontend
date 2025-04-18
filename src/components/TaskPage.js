@@ -1,61 +1,107 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const TaskPage = () => {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [message, setMessage] = useState('');
+    const [tasks, setTasks] = useState([]);
+    const [isEditing, setIsEditing] = useState(false); // Būsenos kintamasis, kad žinotume, ar redaguojame
+    const [editingTaskId, setEditingTaskId] = useState(null); // Saugo redaguojamos užduoties ID
 
+    // Funkcija, skirta užduoties kūrimui
     const handleCreateTask = async () => {
-        // Patikriname, ar tokenas egzistuoja
         const token = localStorage.getItem('token');
-        console.log('Token:', token);  // Patikrinkite, ar tokenas yra
         if (!token) {
             setMessage('❌ Nėra prisijungimo tokeno');
             return;
         }
 
-        // Patikriname, ar abu laukai užpildyti
         if (!title || !description) {
             setMessage('❌ Užpildykite visus laukus');
             return;
         }
 
         try {
-            // Siunčiame užklausą su užduoties duomenimis
             const res = await axios.post(
                 'http://localhost:5000/api/tasks',
-                {
-                    title,
-                    description,
-                },
-                {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                    },
-                }
+                { title, description },
+                { headers: { 'Authorization': `Bearer ${token}` } }
             );
-            console.log('Task created:', res.data);  // Patikrinkite atsakymą
             setMessage('✅ Užduotis sukurta!');
+            fetchTasks(); // Atgauname užduotis iš serverio po naujos užduoties sukūrimo
         } catch (err) {
             console.error('Error creating task:', err);
             setMessage('❌ Užduoties kūrimas nepavyko');
-
-            // Patikriname, jei serveris grąžina klaidą
-            if (err.response) {
-                console.log('Serverio klaida:', err.response.data);  // Patikrinkite atsakymą iš serverio
-                setMessage(`❌ Klaida: ${err.response.data.error || 'Nežinoma klaida'}`);
-            } else if (err.request) {
-                console.log('Klaida su užklausa:', err.request);  // Patikrinkite užklausos problemas
-            } else {
-                console.log('Klaida:', err.message);  // Patikrinkite klaidos žinutę
-            }
         }
     };
 
+    // Funkcija, skirta gauti užduotis iš serverio
+    const fetchTasks = async () => {
+        const token = localStorage.getItem('token');
+        try {
+            const res = await axios.get('http://localhost:5000/api/tasks', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setTasks(res.data);
+        } catch (err) {
+            console.error('Error fetching tasks:', err);
+        }
+    };
+
+    // Funkcija užduoties redagavimui
+    const handleEditTask = (task) => {
+        setTitle(task.title);
+        setDescription(task.description);
+        setIsEditing(true);
+        setEditingTaskId(task.id);
+    };
+
+    // Funkcija užduoties atnaujinimui
+    const handleUpdateTask = async () => {
+        const token = localStorage.getItem('token');
+        if (!title || !description) {
+            setMessage('❌ Užpildykite visus laukus');
+            return;
+        }
+
+        try {
+            const res = await axios.put(
+                `http://localhost:5000/api/tasks/${editingTaskId}`,
+                { title, description },
+                { headers: { 'Authorization': `Bearer ${token}` } }
+            );
+            setMessage('✅ Užduotis atnaujinta!');
+            setIsEditing(false); // Išjungiam redagavimo režimą
+            fetchTasks(); // Atgauname užduotis iš serverio po atnaujinimo
+        } catch (err) {
+            console.error('Error updating task:', err);
+            setMessage('❌ Užduoties atnaujinimas nepavyko');
+        }
+    };
+
+    // Funkcija užduoties ištrynimui
+    const handleDeleteTask = async (taskId) => {
+        const token = localStorage.getItem('token');
+        try {
+            await axios.delete(`http://localhost:5000/api/tasks/${taskId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            setMessage('✅ Užduotis ištrinta!');
+            fetchTasks(); // Atgauname užduotis iš serverio po ištrynimo
+        } catch (err) {
+            console.error('Error deleting task:', err);
+            setMessage('❌ Užduoties ištrynimas nepavyko');
+        }
+    };
+
+    useEffect(() => {
+        fetchTasks(); // Gauti užduotis, kai komponentas įkeltas
+    }, []);
+
     return (
         <div>
-            <h2>Sukurti naują užduotį</h2>
+            <h2>{isEditing ? 'Redaguoti užduotį' : 'Sukurti naują užduotį'}</h2>
             <input
                 type="text"
                 placeholder="Užduoties pavadinimas"
@@ -67,8 +113,44 @@ const TaskPage = () => {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
             />
-            <button onClick={handleCreateTask}>Sukurti užduotį</button>
+            <button onClick={isEditing ? handleUpdateTask : handleCreateTask}>
+                {isEditing ? 'Atnaujinti užduotį' : 'Sukurti užduotį'}
+            </button>
             {message && <p>{message}</p>}
+
+            <h2>Užduočių sąrašas</h2>
+            <ul>
+                {tasks.length === 0 ? (
+                    <p>Užduočių nėra</p> // Jeigu užduočių nėra
+                ) : (
+                    tasks.map((task) => (
+                        <li key={task.id}>
+                            <div>
+                                <span
+                                    style={{
+                                        textDecoration: task.completed ? 'line-through' : 'none',
+                                    }}
+                                >
+                                    {task.title}
+                                </span>
+                            </div>
+                            <div>
+                                <strong>Aprašymas:</strong> {task.description || 'Nėra aprašymo'}
+                            </div>
+                            <div>
+                                <strong>Vartotojas:</strong> {task.User?.username || 'Nežinomas'}
+                            </div>
+                            <div>
+                                <strong>Sukūrimo data:</strong> {new Date(task.createdAt).toLocaleString()}
+                            </div>
+                            <div>
+                                <button onClick={() => handleEditTask(task)}>Redaguoti</button>
+                                <button onClick={() => handleDeleteTask(task.id)}>Ištrinti</button>
+                            </div>
+                        </li>
+                    ))
+                )}
+            </ul>
         </div>
     );
 };
